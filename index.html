@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Asteroid Survival Simulator — Intro</title>
+<style>
+  :root{
+    --bg1:#08142f; --bg2:#0a1f4a;
+    --panel:#0c1b3d; --panelBorder:#2a49a3;
+    --ink:#eaf2ff; --muted:#a9bfec; --accent:#ff6b6b; --accent2:#5eead4;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:
+    radial-gradient(1200px 600px at 20% -10%,#132a67 0%,transparent 55%),
+    linear-gradient(180deg,var(--bg1),var(--bg2));
+    color:var(--ink);font-family:Inter,system-ui,Segoe UI,Arial}
+  /* subtle stars */
+  body:before, body:after{
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:-1;
+    background:
+      radial-gradient(2px 2px at 10% 15%, #ffffff66 30%, transparent 31%) repeat,
+      radial-gradient(1px 1px at 80% 25%, #ffffff55 30%, transparent 31%) repeat,
+      radial-gradient(1.5px 1.5px at 40% 70%, #ffffff44 30%, transparent 31%) repeat;
+    background-size: 260px 220px, 300px 260px, 340px 300px; opacity:.6;
+  }
+  .wrap{min-height:100%;padding:28px;display:grid;place-items:center}
+  .card{max-width:980px;width:100%;display:grid;grid-template-columns:1.1fr 0.9fr;gap:22px}
+  .panel{position:relative;background:linear-gradient(180deg,#0c1b3d,#0b1530);border:1px solid var(--panelBorder);border-radius:18px;padding:20px;box-shadow:0 16px 36px rgba(0,0,0,.55)}
+  h1{margin:2px 0 10px;font-size:42px;line-height:1.1;text-shadow:0 6px 16px rgba(0,0,0,.45)}
+  p.lead{margin:0;color:var(--muted)}
+  ul{margin:12px 0 0 20px;color:#c7d6ff}
+  .cta{display:flex;gap:12px;flex-wrap:wrap;margin-top:16px}
+  .btn{background:#3b82f6;border:0;color:#04131d;padding:12px 16px;border-radius:12px;font-weight:800;cursor:pointer;box-shadow:0 8px 18px rgba(59,130,246,.35)}
+  .btn.primary{background:linear-gradient(180deg,var(--accent),#e23a3a);color:#1a0c0c;box-shadow:0 10px 22px rgba(226,58,58,.45)}
+  .k{font-size:12px;color:#9fc2ff}
+  .v{font-weight:800}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  canvas{width:100%;height:220px;background:#081534;border-radius:12px;border:1px solid #21408f;box-shadow:inset 0 0 18px #00000066}
+  .formula img{vertical-align:middle;margin:0 4px;border:1px solid rgba(255,255,255,.18);border-radius:10px;box-shadow:0 6px 16px rgba(0,0,0,.35)}
+  /* meteor decal */
+  .meteor{position:absolute; right:16px; top:16px; width:92px; height:auto; filter:drop-shadow(0 8px 14px rgba(0,0,0,.55)); image-rendering:pixelated; animation:float 4.3s ease-in-out infinite alternate; pointer-events:none}
+  @keyframes float{from{transform:translateY(0) rotate(0deg)} to{transform:translateY(-7px) rotate(-4deg)}}
+  @media (max-width:980px){ .card{grid-template-columns:1fr} .meteor{width:76px} h1{font-size:34px} }
+</style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="card">
+      <!-- LEFT PANEL -->
+      <div class="panel">
+        <img class="meteor" src="meteorito_pixel-removebg-preview.png" alt="Meteor decal">
+        <h1>Asteroid Survival Simulator</h1>
+        <p class="lead">
+          Explore how an asteroid could affect a location on Earth and which civil protection actions help reduce risk.
+          Flow: <strong>pick an asteroid</strong> (Section 2), <strong>simulate</strong> (Sections 3–4),
+          and <strong>report + trivia</strong> (Sections 5–6).
+        </p>
+        <ul>
+          <li>
+            Educational model:
+            <span class="formula">
+              <img alt="E = 1/2 · m · v^2"
+                   src='data:image/svg+xml;utf8,
+                   <svg xmlns="http://www.w3.org/2000/svg" width="220" height="42">
+                     <rect rx="8" ry="8" width="100%" height="100%" fill="%230b1d46"/>
+                     <text x="16" y="27" font-family="ui-monospace, Menlo, Consolas, monospace"
+                           font-size="18" fill="white">E = 1/2 · m · v^2</text>
+                   </svg>'>
+            </span>
+            and
+            <span class="formula">
+              <img alt="R ∝ E^(1/3)"
+                   src='data:image/svg+xml;utf8,
+                   <svg xmlns="http://www.w3.org/2000/svg" width="190" height="42">
+                     <rect rx="8" ry="8" width="100%" height="100%" fill="%230b1d46"/>
+                     <text x="16" y="27" font-family="ui-monospace, Menlo, Consolas, monospace"
+                           font-size="18" fill="white">R ∝ E^(1/3)</text>
+                   </svg>'>
+            </span>.
+          </li>
+          <li>Editable parameters: size, speed, <em>composition/density</em>.</li>
+          <li>Leaflet maps, charts, and exports (CSV/JSON/PDF).</li>
+        </ul>
+        <div class="cta">
+          <button id="start" class="btn primary">Start Simulation 🚀</button>
+          <button id="howBtn" class="btn">How it works</button>
+        </div>
+        <p class="lead" style="margin-top:8px">Tip: your choice is stored locally to prefill the simulation.</p>
+      </div>
+
+      <!-- RIGHT PANEL (no large image to avoid the path issue) -->
+      <div class="panel">
+        <div class="grid2">
+          <div>
+            <div class="k">Model</div>
+            <div class="v">Order-of-magnitude (educational)</div>
+          </div>
+          <div>
+            <div class="k">Outputs</div>
+            <div class="v">1/5/20 psi rings • Population</div>
+          </div>
+        </div>
+
+        <div style="margin-top:12px">
+          <div class="k">Flow</div>
+          <ol style="margin-left:18px;color:#c7d6ff">
+            <li>Section 2: pick asteroid, velocity & composition.</li>
+            <li>Sections 3–4: set impact point on map and simulate.</li>
+            <li>Sections 5–6: export the report and take the trivia.</li>
+          </ol>
+        </div>
+
+        <!-- Preview sparkline (kept) -->
+        <div style="margin-top:12px">
+          <div class="k">Preview</div>
+          <canvas id="spark"></canvas>
+        </div>
+      </div>
+    </section>
+  </main>
+
+<script>
+document.getElementById("start").addEventListener("click",()=>{
+  try{ window.parent && window.parent.postMessage({type:"GO_SECTION_2"},"*"); }catch(e){}
+  window.location.href="section2_selection.html";
+});
+
+document.getElementById('howBtn').addEventListener('click', ()=>{
+  alert(`How it works:
+1) In Section 2 choose asteroid, composition (density), and speed.
+2) On the map (Section 3) set the impact point and run the simulation.
+3) We compute E = 1/2 m v^2 and approximate radii ~ E^(1/3).
+4) Export a report and complete the trivia.`);
+});
+
+// sparkline (same as before)
+(function(){
+  const c = document.getElementById('spark');
+  const dpr = window.devicePixelRatio || 1;
+  const w = c.clientWidth, h = c.clientHeight;
+  c.width = w*dpr; c.height = h*dpr;
+  const ctx = c.getContext('2d'); ctx.scale(dpr,dpr);
+  const grad = ctx.createLinearGradient(0,0,w,0);
+  grad.addColorStop(0,'#5eead4'); grad.addColorStop(1,'#60a5fa');
+  ctx.fillStyle = '#07122c'; ctx.fillRect(0,0,w,h);
+  ctx.strokeStyle = grad; ctx.lineWidth = 2.2;
+  ctx.shadowColor = '#60a5fa'; ctx.shadowBlur = 8;
+  ctx.beginPath();
+  let x=8, step=(w-16)/52;
+  for(let i=0;i<=52;i++){
+    const k = Math.sin(i*0.32)*0.5 + Math.cos(i*0.19)*0.35 + Math.random()*0.15;
+    const yy = h*0.58 - k*22;
+    if(i===0) ctx.moveTo(x,yy); else ctx.lineTo(x,yy);
+    x+=step;
+  }
+  ctx.stroke();
+})();
+</script>
+</body>
+</html>
+
+

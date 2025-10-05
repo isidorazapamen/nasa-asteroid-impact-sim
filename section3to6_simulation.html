@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>NASA Hackathon — Sections 3 to 6 (with ripples)</title>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+
+  <style>
+    :root{ --bg:#0b1220; --panel:#0e172a; --muted:#93a4c0; --accent:#60a5fa; --ok:#22c55e; --warn:#f59e0b; --bad:#ef4444; }
+    html,body{height:100%;margin:0;background:linear-gradient(180deg,#071022 0%,#04131d 100%);color:#e6eef8;font-family:Inter,system-ui,Arial}
+    .wrap{max-width:1200px;margin:18px auto;padding:16px}
+    .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:10px}
+    .brand{font-size:14px;color:var(--muted)}
+    .btn, button{background:linear-gradient(180deg,var(--accent),#3b82f6);border:0;color:#04131d;font-weight:700;border-radius:9px;padding:9px 12px;cursor:pointer}
+    .ghost{background:transparent !important;border:1px solid rgba(255,255,255,.10) !important;color:#cde2ff !important}
+    h1{margin:0 0 6px;font-size:22px}
+    p.lead{margin:0 0 12px;color:var(--muted);font-size:13px}
+    .grid{display:grid;grid-template-columns:2fr 1fr;gap:14px}
+    .card{background:var(--panel);border:1px solid rgba(255,255,255,.05);border-radius:12px;box-shadow:0 10px 24px rgba(2,6,23,.6);padding:12px}
+    #map{height:420px;border-radius:10px}
+    label{font-size:13px;color:var(--muted)}
+    .row{display:flex;gap:8px;flex-wrap:wrap}
+    input,select{background:#0a1324;border:1px solid rgba(255,255,255,.08);color:#e6eef8;border-radius:8px;padding:8px 10px;font-size:14px}
+    input[type="number"]{width:110px}
+    .pill{display:inline-block;font-size:12px;padding:2px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.12);color:#cde2ff}
+    .stat{font-size:13px;color:var(--muted)}
+    .cols{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .divider{height:1px;background:rgba(255,255,255,.06);margin:10px 0}
+    .box{background:#091127;border:1px dashed rgba(255,255,255,.12);padding:10px;border-radius:10px}
+    .ok{color:#22c55e}.warn{color:#f59e0b}.bad{color:#ef4444}
+    @media(max-width:980px){ .grid{grid-template-columns:1fr} #map{height:360px} }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <button id="btnHome" class="ghost">← Back to Home</button>
+      <span class="brand">NASA Hackathon • Sections 3–6</span>
+    </div>
+
+    <h1>3–6: Map, Simulation, Summary & Trivia</h1>
+    <p class="lead">Click the map to set the impact point. Tune parameters, run the simulation, export the report, and answer the trivia.</p>
+
+    <div class="grid">
+      <div class="card">
+        <div class="row" style="align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div class="row" style="align-items:center;gap:10px">
+            <span class="pill">3) Leaflet map</span>
+            <span id="coords" class="stat">Lat: — , Lon: —</span>
+          </div>
+          <div class="row">
+            <button id="btnRun" disabled>Run Simulation</button>
+            <button id="btnClear" class="ghost">Clear</button>
+            <label class="stat" style="display:flex;align-items:center;gap:6px;margin-left:8px">
+              <input id="animToggle" type="checkbox" checked>
+              Show animation
+            </label>
+          </div>
+        </div>
+        <div id="map"></div>
+
+        <div class="divider"></div>
+        <div class="row" style="align-items:center;gap:14px">
+          <span class="pill">4) Simulation</span>
+          <label>Event</label>
+          <select id="eventType">
+            <option value="airburst">Airburst</option>
+            <option value="crater">Crater impact</option>
+          </select>
+          <label>Diameter (m)</label>
+          <input id="diameter" type="number" min="1" value="50" step="1">
+          <label>Density (kg/m³)</label>
+          <input id="density" type="number" min="100" value="3000" step="50">
+          <label>Velocity (km/s)</label>
+          <input id="velocity" type="number" min="1" value="17" step="0.1">
+          <label>Angle (°)</label>
+          <input id="angle" type="number" min="10" max="90" value="45" step="1">
+        </div>
+        <div class="row" style="align-items:center;margin-top:8px">
+          <label>Airburst height (km) — only if “Airburst”</label>
+          <input id="burstHeight" type="number" min="1" value="15" step="1">
+          <span class="stat">Thresholds: <span style="color:#38bdf8">1 psi</span>, <span style="color:#fb923c">5 psi</span>, <span style="color:#ef4444">20 psi</span></span>
+        </div>
+      </div>
+
+      <div class="card" id="panelResumen">
+        <div class="row" style="align-items:center;justify-content:space-between">
+          <span class="pill">5) Summary text</span>
+          <div class="row">
+            <button id="btnCSV" class="ghost">CSV</button>
+            <button id="btnJSON" class="ghost">JSON</button>
+            <button id="btnPDF" class="ghost">PDF</button>
+          </div>
+        </div>
+
+        <div class="cols" style="margin-top:6px">
+          <div class="box">
+            <strong>Asteroid facts</strong>
+            <div class="stat" id="ficha">—</div>
+            <div class="divider"></div>
+            <label>Population scenario:</label>
+            <select id="popPreset">
+              <option value="12000">Dense urban (~12,000 people/km²)</option>
+              <option value="4000">Urban (~4,000 people/km²)</option>
+              <option value="800">Peri-urban (~800 people/km²)</option>
+              <option value="50">Rural (~50 people/km²)</option>
+              <option value="custom">Custom…</option>
+            </select>
+            <input id="popCustom" type="number" min="0" value="1000" style="display:none;margin-top:6px" placeholder="people/km² (custom)">
+            <div class="stat" id="popNote" style="margin-top:6px">Simple estimate: density × area.</div>
+          </div>
+          <div class="box">
+            <strong>Civil Protection — Recommendations</strong>
+            <ul class="stat" id="recs" style="margin-left:18px">
+              <li>Run the simulation to generate recommendations.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+        <canvas id="chartImpacts" height="140"></canvas>
+        <div class="stat" id="sumTxt" style="margin-top:6px">Results will appear here.</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <div class="row" style="align-items:center;justify-content:space-between">
+        <span class="pill">6) Trivia (3 questions)</span>
+        <button id="resetQuiz" class="ghost">Reset</button>
+      </div>
+      <p class="stat">Based on your current simulation. Answer and get instant feedback.</p>
+      <div id="quiz"></div>
+      <div class="divider"></div>
+      <div id="quizExplain" class="stat">Explanations will be shown after grading.</div>
+    </div>
+  </div>
+
+<script>
+// Back to Home + hotkey (H)
+const goHome = ()=>{ window.location.href = 'index.html'; };
+document.getElementById('btnHome').addEventListener('click', goHome);
+window.addEventListener('keydown', (e)=>{
+  if (e.key.toLowerCase() === 'h' && !e.altKey && !e.ctrlKey && !e.metaKey) goHome();
+});
+
+// 3) MAP
+let map = L.map('map', { zoomControl: true }).setView([0,0], 2);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{ attribution:'© OpenStreetMap' }).addTo(map);
+
+let impactMarker = null;
+let ringsLayer = L.layerGroup().addTo(map);
+let animLayer  = L.layerGroup().addTo(map);
+const coordsEl = document.getElementById('coords');
+const btnRun   = document.getElementById('btnRun');   // <-- única declaración
+const btnClear = document.getElementById('btnClear');
+let impactPoint = null;
+
+map.on('click', (e)=>{
+  impactPoint = {lat:e.latlng.lat, lng:e.latlng.lng};
+  coordsEl.textContent = `Lat: ${impactPoint.lat.toFixed(4)} , Lon: ${impactPoint.lng.toFixed(4)}`;
+  if(impactMarker) impactMarker.remove();
+  impactMarker = L.marker(e.latlng).addTo(map).bindPopup('Impact point').openPopup();
+
+  // pulse
+  if(impactMarker){
+    let t0 = performance.now();
+    function pulse(now){
+      const s = 0.5 + 0.5*Math.sin((now - t0)/180);
+      impactMarker.setOpacity(0.6 + 0.4*s);
+      if (now - t0 < 1800) requestAnimationFrame(pulse);
+      else impactMarker.setOpacity(1);
+    }
+    requestAnimationFrame(pulse);
+  }
+  btnRun.disabled = false;
+});
+
+btnClear.addEventListener('click', ()=>{
+  impactPoint = null;
+  coordsEl.textContent = 'Lat: — , Lon: —';
+  btnRun.disabled = true;
+  if(impactMarker) { impactMarker.remove(); impactMarker=null; }
+  ringsLayer.clearLayers();
+  animLayer.clearLayers();
+  updateSummary(null);
+});
+
+// 4) PHYSICS
+const inputs = {
+  eventType: document.getElementById('eventType'),
+  diameter:  document.getElementById('diameter'),
+  density:   document.getElementById('density'),
+  velocity:  document.getElementById('velocity'),
+  angle:     document.getElementById('angle'),
+  burstH:    document.getElementById('burstHeight'),
+  popPreset: document.getElementById('popPreset'),
+  popCustom: document.getElementById('popCustom')
+};
+
+const pre = JSON.parse(localStorage.getItem("nasaAsteroidChoice")||"null");
+if (pre) {
+  inputs.diameter.value = Math.round(pre.diameter_km*1000);
+  inputs.density.value  = pre.density_kgm3;
+  inputs.velocity.value = pre.speed_kms;
+}
+
+inputs.popPreset.addEventListener('change', ()=>{
+  inputs.popCustom.style.display = (inputs.popPreset.value === 'custom') ? 'inline-block' : 'none';
+});
+
+function toNumber(el){ return Number(el.value); }
+function computeEnergyJoules(p){
+  const r = (p.diameter/2);
+  const volume = (4/3)*Math.PI*Math.pow(r,3);
+  const mass = volume * p.density;
+  const v = p.velocity*1000;
+  const E = 0.5 * mass * v*v;
+  return {E, mass};
+}
+const K_AIRBURST = {"1psi":0.0062,"5psi":0.0038,"20psi":0.0021};
+const K_CRATER   = {"1psi":0.0048,"5psi":0.0030,"20psi":0.0016};
+function estimateRingsKm(E, eventType){
+  const K = (eventType === 'airburst') ? K_AIRBURST : K_CRATER;
+  const c = Math.cbrt(E);
+  return { r1:K["1psi"]*c, r5:K["5psi"]*c, r20:K["20psi"]*c };
+}
+function drawRings(center, km){
+  ringsLayer.clearLayers();
+  if(!center) return;
+  L.circle(center,{radius:km.r1*1000,color:'#38bdf8',fill:false,weight:2}).addTo(ringsLayer).bindTooltip('~1 psi');
+  L.circle(center,{radius:km.r5*1000,color:'#fb923c',fill:false,weight:2}).addTo(ringsLayer).bindTooltip('~5 psi');
+  L.circle(center,{radius:km.r20*1000,color:'#ef4444',fill:false,weight:2}).addTo(ringsLayer).bindTooltip('~20 psi');
+}
+
+// ripples
+const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
+function animateCircle({center, color, targetKm, duration=1200, delay=0, weight=3}) {
+  return new Promise(resolve => {
+    const circle = L.circle(center, { radius: 0, color, fill:false, weight, opacity: 0.95 }).addTo(animLayer);
+    const start = performance.now() + delay;
+    const targetM = targetKm * 1000;
+    function frame(now){
+      if (now < start) { requestAnimationFrame(frame); return; }
+      const t = Math.min(1, (now - start) / duration);
+      const r = targetM * easeOutCubic(t);
+      circle.setRadius(r);
+      if (t > 0.85) circle.setStyle({opacity: 0.95 - (t-0.85)/0.15});
+      if (t < 1) requestAnimationFrame(frame);
+      else { animLayer.removeLayer(circle); resolve(); }
+    }
+    requestAnimationFrame(frame);
+  });
+}
+async function animateRings(center, km, leaveStatic=true){
+  animLayer.clearLayers();
+  const waves = [
+    animateCircle({center, color:'#38bdf8', targetKm:km.r1, duration:1000, delay:0,   weight:2}),
+    animateCircle({center, color:'#fb923c', targetKm:km.r5, duration:1200, delay:150, weight:2}),
+    animateCircle({center, color:'#ef4444', targetKm:km.r20,duration:1400, delay:300, weight:2}),
+  ];
+  await Promise.all(waves);
+  if (leaveStatic) drawRings(center, km);
+}
+
+// 5) SUMMARY / CHARTS / EXPORT
+const fichaEl = document.getElementById('ficha');
+const sumTxtEl = document.getElementById('sumTxt');
+const recsEl   = document.getElementById('recs');
+
+let chart = null;
+function ensureChart(){
+  if(chart) return chart;
+  const ctx = document.getElementById('chartImpacts');
+  chart = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: ['Radius 1 psi (km)','Radius 5 psi (km)','Radius 20 psi (km)','Affected area (km²)'], datasets: [{ label:'Estimated impact', data:[0,0,0,0] }]},
+    options: { responsive:true, plugins:{legend:{display:false}} }
+  });
+  return chart;
+}
+function areaRingsKm2(km){
+  return {
+    A1:  Math.PI*Math.pow(km.r1,2),
+    A5:  Math.PI*Math.pow(km.r5,2),
+    A20: Math.PI*Math.pow(km.r20,2)
+  };
+}
+function populationEstimate(km){
+  const {A1,A5,A20} = areaRingsKm2(km);
+  const dens = (inputs.popPreset.value==='custom' ? toNumber(inputs.popCustom) : Number(inputs.popPreset.value));
+  return {
+    density: dens,
+    ring1: Math.round(A1*dens),
+    ring5: Math.round(A5*dens),
+    ring20:Math.round(A20*dens),
+    total: Math.round(A1*dens)
+  };
+}
+function updateRecommendations(eventType, km){
+  const lines = [];
+  if(!km){ recsEl.innerHTML = '<li>Run the simulation to generate recommendations.</li>'; return; }
+  lines.push(`<li><strong>Safety perimeter</strong>: evacuate ≥ ${km.r5.toFixed(1)} km; shelter-in-place up to ${km.r1.toFixed(1)} km.</li>`);
+  if(eventType==='airburst'){
+    lines.push('<li>Main hazards: <em>shockwave</em> and shattered glass.</li>');
+    lines.push('<li>Critical infrastructure: consider gas/electric pre-emptive cutoff inside 5-psi ring.</li>');
+  } else {
+    lines.push('<li>Main hazards: <em>ejecta</em> and secondary projectiles.</li>');
+    lines.push('<li>Activate emergency routes and heavy equipment for debris removal.</li>');
+  }
+  lines.push('<li>Clear map-based messaging; triage focused on trauma and cuts.</li>');
+  recsEl.innerHTML = lines.join('');
+}
+function updateSummary(payload){
+  if(!payload){
+    fichaEl.textContent = '—';
+    sumTxtEl.textContent = 'Results will appear here.';
+    ensureChart(); chart.data.datasets[0].data=[0,0,0,0]; chart.update();
+    recsEl.innerHTML = '<li>Run the simulation to generate recommendations.</li>';
+    return;
+  }
+  const {params, E, km, pop, point} = payload;
+  fichaEl.innerHTML =
+    `Asteroid: <strong>${params.diameter} m</strong> · ρ <strong>${params.density} kg/m³</strong> · v <strong>${params.velocity} km/s</strong> · angle <strong>${params.angle}°</strong> · event <strong>${params.eventType}</strong><br>` +
+    `Location: <strong>${point.lat.toFixed(3)}, ${point.lng.toFixed(3)}</strong><br>` +
+    `Energy ≈ <strong>${(E/4.184e15).toFixed(2)} Mt TNT</strong>`;
+  const A = areaRingsKm2(km);
+  ensureChart();
+  chart.data.datasets[0].data = [Number(km.r1.toFixed(2)), Number(km.r5.toFixed(2)), Number(km.r20.toFixed(2)), Number(A.A1.toFixed(1))];
+  chart.update();
+  sumTxtEl.innerHTML =
+   `Rings: <span style="color:#38bdf8">1 psi = ${km.r1.toFixed(1)} km</span> · <span style="color:#fb923c">5 psi = ${km.r5.toFixed(1)} km</span> · <span style="color:#ef4444">20 psi = ${km.r20.toFixed(1)} km</span><br>` +
+   `Total area (1 psi): <strong>${A.A1.toFixed(1)} km²</strong> · Estimated population: <strong>${pop.total.toLocaleString()}</strong> (severe=${pop.ring20.toLocaleString()}, moderate=${pop.ring5.toLocaleString()}, light=${pop.ring1.toLocaleString()})`;
+  updateRecommendations(params.eventType, km);
+}
+
+// 6) TRIVIA
+const quizEl = document.getElementById('quiz');
+const explainEl = document.getElementById('quizExplain');
+function makeQuiz(payload){
+  if(!payload){ quizEl.innerHTML = '<div class="stat">Run a simulation to generate the quiz.</div>'; return; }
+  const {params, km} = payload;
+  const qs = [
+    { q:`If the ~5 psi radius is ${km.r5.toFixed(1)} km, which damage is most likely there?`, opts:['Only light glass breakage','Structural damage in buildings','Widespread severe damage'], a:1, exp:'Around 5 psi, structural damage becomes common (partial collapses, walls, debris).' },
+    { q:`Event "${params.eventType}": which immediate hazard is most characteristic?`, opts:(params.eventType==='airburst')?['Deep crater','Shockwave and flying glass','Pyroclastic flows']:['High-altitude shockwave','Ejecta and secondary projectiles','Intense auroras'], a:1, exp:(params.eventType==='airburst')?'Airbursts are dominated by shockwaves and flying glass.':'Crater-forming impacts are dominated by ejecta and projectiles.' },
+    { q:'If you double the diameter (same ρ and v), energy scales as…', opts:['×2','×4','×8'], a:2, exp:'Mass ~ r³; doubling diameter ⇒ volume ×8 ⇒ E ~ m ⇒ ×8.' }
+  ];
+  quizEl.innerHTML = qs.map((qa,i)=>`
+    <div class="box" style="margin:8px 0">
+      <div><strong>Q${i+1}:</strong> ${qa.q}</div>
+      ${qa.opts.map((o,j)=>`<label style="display:block;margin-top:6px"><input type="radio" name="q${i}" value="${j}"> ${o}</label>`).join('')}
+      <div id="fb${i}" class="stat" style="margin-top:6px"></div>
+    </div>`).join('') + `<div class="row" style="justify-content:flex-end"><button id="grade" class="ghost">Grade</button></div>`;
+  document.getElementById('grade').onclick = ()=>{
+    let correct=0;
+    qs.forEach((qa,i)=>{
+      const sel=document.querySelector(`input[name="q${i}"]:checked`);
+      const fb=document.getElementById(`fb${i}`);
+      if(!sel){ fb.innerHTML='<span class="warn">Select an option.</span>'; return; }
+      const ok = Number(sel.value)===qa.a;
+      if(ok){ correct++; fb.innerHTML = '<span class="ok">Correct!</span>'; }
+      else{ fb.innerHTML = `<span class="bad">Incorrect.</span> <span class="stat">${qa.exp}</span>`; }
+    });
+    explainEl.innerHTML = `Score: <strong>${correct}/3</strong>. Remember: radii ~ E^(1/3).`;
+  };
+}
+document.getElementById('resetQuiz').onclick = ()=>{ makeQuiz(null); explainEl.textContent='Explanations will be shown after grading.' };
+
+// Run simulation
+btnRun.addEventListener('click', async ()=>{
+  if(!impactPoint){ alert('Pick an impact point on the map.'); return; }
+  const params = { eventType: inputs.eventType.value, diameter: Number(inputs.diameter.value), density: Number(inputs.density.value), velocity: Number(inputs.velocity.value), angle: Number(inputs.angle.value), burstH: Number(inputs.burstH.value) };
+  const {E} = computeEnergyJoules(params);
+  const km = estimateRingsKm(E, params.eventType);
+  const animOn = document.getElementById('animToggle')?.checked;
+  ringsLayer.clearLayers();
+  if (animOn) { await animateRings(impactPoint, km, true); } else { drawRings(impactPoint, km); }
+  const pop = populationEstimate(km);
+  const payload = {point:impactPoint, params, E, km, pop};
+  updateSummary(payload); makeQuiz(payload);
+  const maxKm = Math.max(km.r1, km.r5, km.r20);
+  map.flyTo(impactPoint, Math.max(4, 9 - Math.log2(maxKm+1)));
+});
+
+// Exports
+function currentReport(){
+  if(!impactPoint) return null;
+  const params = { eventType: inputs.eventType.value, diameter: Number(inputs.diameter.value), density: Number(inputs.density.value), velocity: Number(inputs.velocity.value), angle: Number(inputs.angle.value), burstH: Number(inputs.burstH.value) };
+  const {E} = computeEnergyJoules(params);
+  const km = estimateRingsKm(E, params.eventType);
+  const pop = populationEstimate(km);
+  const {A1,A5,A20}=areaRingsKm2(km);
+  return { timestamp:new Date().toISOString(), impact:{lat:impactPoint.lat, lon:impactPoint.lng}, params, energy_J:E, energy_megatons:E/4.184e15, rings_km:km, areas_km2:{A1,A5,A20}, population:pop };
+}
+function downloadBlob(blob, name){
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1500);
+}
+document.getElementById('btnCSV').onclick = ()=>{
+  const R=currentReport(); if(!R) return alert('Run a simulation first.');
+  const rows=[ ['timestamp',R.timestamp], ['lat',R.impact.lat], ['lon',R.impact.lon], ['event',R.params.eventType], ['diameter_m',R.params.diameter], ['density_kgm3',R.params.density], ['velocity_kms',R.params.velocity], ['angle_deg',R.params.angle], ['burst_km',R.params.burstH], ['energy_MtTNT',R.energy_megatons.toFixed(4)], ['r1_km',R.rings_km.r1.toFixed(3)], ['r5_km',R.rings_km.r5.toFixed(3)], ['r20_km',R.rings_km.r20.toFixed(3)], ['area1_km2',R.areas_km2.A1.toFixed(3)], ['pop_total',R.population.total], ['pop_ring20',R.population.ring20], ['pop_ring5',R.population.ring5], ['pop_ring1',R.population.ring1] ];
+  downloadBlob(new Blob([rows.map(r=>r.join(',')).join('\n')],{type:'text/csv'}),'impact_report.csv');
+};
+document.getElementById('btnJSON').onclick = ()=>{
+  const R=currentReport(); if(!R) return alert('Run a simulation first.');
+  downloadBlob(new Blob([JSON.stringify(R,null,2)],{type:'application/json'}),'impact_report.json');
+};
+document.getElementById('btnPDF').onclick = ()=>{
+  const R=currentReport(); if(!R) return alert('Run a simulation first.');
+  const { jsPDF } = window.jspdf; const doc=new jsPDF({unit:'pt'});
+  doc.setFontSize(14); doc.text('Impact Report — NASA Hackathon (3–6)', 40,40);
+  doc.setFontSize(11);
+  const lines=[ `Date: ${new Date(R.timestamp).toLocaleString()}`, `Location: ${R.impact.lat.toFixed(3)}, ${R.impact.lon.toFixed(3)}`, `Event: ${R.params.eventType} | D=${R.params.diameter} m | ρ=${R.params.density} kg/m³ | v=${R.params.velocity} km/s | angle=${R.params.angle}°`, `Energy ≈ ${R.energy_megatons.toFixed(2)} Mt TNT`, `Radii: 1psi=${R.rings_km.r1.toFixed(1)} km, 5psi=${R.rings_km.r5.toFixed(1)} km, 20psi=${R.rings_km.r20.toFixed(1)} km`, `Area (1psi) ≈ ${R.areas_km2.A1.toFixed(1)} km²`, `Estimated population ≈ ${R.population.total.toLocaleString()} (severe=${R.population.ring20.toLocaleString()})` ];
+  let y=70; lines.forEach(t=>{ doc.text(t, 40,y); y+=16; });
+  doc.text('Civil Protection — Quick recommendations:', 40, y+6); y+=22;
+  const recs=[ 'Evacuate ≥ 5-psi radius; shelter-in-place up to 1-psi ring.', (R.params.eventType==='airburst' ? 'Watch for glass/shockwave; consider gas/electric cutoff in 5-psi ring.' : 'Beware of ejecta; keep emergency routes clear.'), 'Clear messaging with ring map; triage for trauma/cuts.' ];
+  recs.forEach(t=>{ doc.text('• '+t, 48,y); y+=16; });
+  doc.save('impact_report.pdf');
+};
+
+// init empty quiz
+makeQuiz(null);
+</script>
+</body>
+</html>
+
+
